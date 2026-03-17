@@ -62,11 +62,47 @@ If the entry has a `requires` field:
   - Raw URL pattern: `https://raw.githubusercontent.com/<org>/<repo>/<branch>/<path>`
 - Determine the clone URL: `https://github.com/<org>/<repo>.git`
 - Determine the parent directory path within the repo (everything before the filename)
+- **Show the user the clone target and ask for confirmation:**
+  "Will clone from `https://github.com/<org>/<repo>.git` (branch: `<branch>`) to fetch `<name>`."
+  Ask: "Proceed?"
+  If the user declines, abort and tell them: "Fetch aborted."
 - Clone into a temporary directory:
   ```bash
   tmp_dir=$(mktemp -d)
   git clone --depth 1 --branch <branch> https://github.com/<org>/<repo>.git "$tmp_dir"
   ```
+
+**If clone fails (private repo)**, try SSH:
+  ```bash
+  git clone --depth 1 --branch <branch> git@github.com:<org>/<repo>.git "$tmp_dir"
+  ```
+
+### 6. Verify Source Integrity
+
+**For GitHub sources only** (skip for local paths):
+
+After cloning, check the commit SHA:
+```bash
+cd "$tmp_dir"
+fetched_commit=$(git rev-parse --short HEAD)
+```
+
+**If the entry has a `commit` field in library.yaml:**
+- Compare `fetched_commit` with the pinned `commit` value
+- If they match: proceed silently
+- If they don't match: warn the user:
+  "**Warning:** Expected commit `<pinned>` but fetched `<fetched_commit>`. The source has changed since it was last pinned."
+  Ask: "Continue with the new version, or abort?"
+  - If user says continue: proceed and offer to update the `commit` field
+  - If user says abort: clean up tmp_dir and exit
+
+**If the entry has NO `commit` field:**
+- Show the user: "Fetching `<name>` at commit `<fetched_commit>` from `<source>`"
+- Ask: "Proceed with installation?"
+- After successful install, offer: "Pin this version by adding `commit: <fetched_commit>` to library.yaml?"
+  - If yes: update the entry in library.yaml, commit, and push
+
+**After integrity check passes**, copy and clean up:
 - Copy the parent directory of the file to the target:
   ```bash
   cp -R "$tmp_dir/<parent_path>/" <target_directory>/<name>/
@@ -76,17 +112,12 @@ If the entry has a `requires` field:
   rm -rf "$tmp_dir"
   ```
 
-**If clone fails (private repo)**, try SSH:
-  ```bash
-  git clone --depth 1 --branch <branch> git@github.com:<org>/<repo>.git "$tmp_dir"
-  ```
-
-### 6. Verify Installation
+### 7. Verify Installation
 - Confirm the target directory exists
 - Confirm the main file (SKILL.md, AGENT.md, or prompt file) exists in it
 - Report success with the installed path
 
-### 7. Confirm
+### 8. Confirm
 Tell the user:
 - What was installed and where
 - Any dependencies that were also installed

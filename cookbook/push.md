@@ -39,11 +39,15 @@ The user provides a skill name or description.
 ### 4. Push to Source
 
 **If source is a local path:**
-- Copy the entire local directory to the source location, overwriting:
+- Show the user a diff of what will change:
+  ```bash
+  diff -rq <local_directory> <source_parent_directory> || true
+  ```
+- Ask: "These files will be overwritten at the source. Continue?"
+- If confirmed, copy:
   ```bash
   cp -R <local_directory>/ <source_parent_directory>/
   ```
-- Confirm the overwrite
 
 **If source is a GitHub URL:**
 - If we don't already have a tmp clone from step 3, clone now:
@@ -64,15 +68,23 @@ The user provides a skill name or description.
   cd "$tmp_dir"
   git add <skill_path_in_repo>
   ```
-- Commit with the standard format:
+- **Show the diff to the user before committing:**
+  ```bash
+  git diff --cached --stat
+  git diff --cached
+  ```
+- Ask the user: "These changes will be pushed to `<clone_url>`. Continue?"
+- If the user confirms, commit and push:
   ```bash
   git commit -m "library: updated <name> <brief description of what changed>"
-  ```
-- Push:
-  ```bash
   git push
   ```
-- Clean up:
+- If the user declines, clean up and abort:
+  ```bash
+  rm -rf "$tmp_dir"
+  ```
+  Tell the user: "Push aborted. No changes were made to the remote."
+- Clean up on success:
   ```bash
   rm -rf "$tmp_dir"
   ```

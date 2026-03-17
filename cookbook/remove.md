@@ -34,9 +34,23 @@ Show the entry details and ask:
 If the user confirmed local deletion:
 - Check the default directory for the type (from `default_dirs`)
 - Check the global directory
-- Remove the directory or file:
+
+**Validate the path before deletion:**
+- The `<name>` from the catalog entry must NOT contain `/`, `\`, or `..`
+- If it does, **refuse the operation** and tell the user: "Entry name `<name>` contains invalid path characters. Refusing to delete. Please fix the entry name in library.yaml."
+- Construct the full path: `<target_directory>/<name>`
+- Resolve the full path with `realpath` and confirm it is still inside `<target_directory>`:
   ```bash
-  rm -rf <target_directory>/<name>
+  resolved=$(realpath "<target_directory>/<name>")
+  target_resolved=$(realpath "<target_directory>")
+  if [[ "$resolved" != "$target_resolved"/* ]]; then
+    echo "Error: resolved path is outside the target directory. Aborting."
+    exit 1
+  fi
+  ```
+- Only then run:
+  ```bash
+  rm -rf "$resolved"
   ```
 
 ### 6. Commit and Push

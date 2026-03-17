@@ -97,6 +97,15 @@ When working with GitHub sources, prefer `gh api` for accessing single files (e.
 5. Push to remote
 6. The temporary directory is cleaned up automatically
 
+## Integrity Verification
+
+Entries with GitHub sources can include an optional `commit` field — a git commit SHA (short or full) that pins the expected version.
+
+- When `commit` is present: after cloning, verify the HEAD matches the pinned commit. If it doesn't, warn the user and ask for confirmation before proceeding.
+- When `commit` is absent: after cloning, display the HEAD commit SHA and ask the user to confirm before copying files.
+
+After a successful `/library use`, the agent should offer to update the `commit` field in `library.yaml` to the fetched commit SHA. This makes future fetches pinned by default.
+
 ## Typed Dependencies
 
 The `requires` field uses typed references to avoid ambiguity:
@@ -163,11 +172,13 @@ library:
     - name: diagram-kroki
       description: Generate diagrams via Kroki HTTP API supporting 28+ languages
       source: https://github.com/myorg/private-skills/blob/main/skills/diagram-kroki/SKILL.md
+      commit: a1b2c3d
       requires: [skill:firecrawl]
 
     - name: green-screen-captions
       description: Generate and burn AI-powered captions onto green screen videos
       source: https://raw.githubusercontent.com/myorg/video-tools/main/skills/green-screen-captions/SKILL.md
+      commit: e4f5g6h
       requires: [agent:video-processor, prompt:caption-style]
 
   agents:
@@ -178,6 +189,7 @@ library:
     - name: code-reviewer
       description: Reviews code for quality, security, and performance
       source: https://github.com/myorg/agent-configs/blob/main/agents/code-reviewer/AGENT.md
+      commit: b3c4d5e
 
   prompts:
     - name: caption-style
@@ -187,4 +199,5 @@ library:
     - name: commit-message
       description: Standardized commit message format for all projects
       source: https://github.com/myorg/team-prompts/blob/main/prompts/commit-message.md
+      commit: f6g7h8i
 ```

@@ -25,7 +25,20 @@ For each entry in the catalog:
 - Collect every entry that is installed locally (either default or global)
 - If nothing is installed, tell the user and exit
 
-### 4. Re-pull Each Installed Item
+### 4. Confirm Sources
+
+Before fetching, show the user a summary of what will be synced:
+
+| Name | Type | Source |
+|------|------|--------|
+| skill-name | skill | /local/path/... |
+| other-skill | skill | https://github.com/org/repo.git |
+
+Ask: "Sync these N items from the sources listed above?"
+
+If the user declines, abort the sync.
+
+### 5. Re-pull Each Installed Item
 For each installed entry, fetch the latest from its source:
 
 **If source is a local path** (starts with `/` or `~`):
@@ -55,6 +68,15 @@ For each installed entry, fetch the latest from its source:
   tmp_dir=$(mktemp -d)
   git clone --depth 1 --branch <branch> https://github.com/<org>/<repo>.git "$tmp_dir"
   ```
+
+**Verify integrity for GitHub sources:**
+```bash
+cd "$tmp_dir"
+fetched_commit=$(git rev-parse --short HEAD)
+```
+- If the entry has a `commit` field: compare with fetched commit. If mismatch, log a warning in the sync report and **skip this item** (do not overwrite with an unexpected version). Add to the report: `| skill | name | skipped: commit mismatch (expected X, got Y) |`
+- If the entry has no `commit` field: proceed but log the fetched commit in the report for the user to review.
+
 - Copy the parent directory of the file to the target:
   ```bash
   cp -R "$tmp_dir/<parent_path>/" <target_directory>/<name>/
@@ -69,26 +91,28 @@ For each installed entry, fetch the latest from its source:
   git clone --depth 1 --branch <branch> git@github.com:<org>/<repo>.git "$tmp_dir"
   ```
 
-### 5. Resolve Dependencies
+### 6. Resolve Dependencies
 For each installed entry that has a `requires` field:
 - Check if each dependency is also installed
 - If a dependency is not installed, pull it as well
 - Process dependencies before the items that require them
 
-### 6. Report Results
+### 7. Report Results
 Display a summary table:
 
 ```
 ## Sync Complete
 
-| Type | Name | Status |
-|------|------|--------|
-| skill | skill-name | refreshed |
-| agent | agent-name | refreshed |
-| skill | other-skill | failed: <reason> |
+| Type | Name | Status | Commit |
+|------|------|--------|--------|
+| skill | skill-name | refreshed | a1b2c3d |
+| agent | agent-name | refreshed | (local) |
+| skill | other-skill | skipped: commit mismatch (expected X, got Y) | |
+| skill | failed-skill | failed: <reason> | |
 
 Synced: X items
-Failed: Y items
+Skipped: Y items
+Failed: Z items
 ```
 
 If any items failed (e.g., network error, missing source), list them with the reason so the user can fix individually.
